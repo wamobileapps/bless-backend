@@ -10,6 +10,8 @@ class Follow extends Model
     use HasFactory;
     protected $guarded =[];
     public function user(){
-        return $this->belongsTo(User::class,'user_id');
+        return $this->belongsTo(User::class,'user_id')->select('id','username','name','image');
+    }   public function userfollow(){
+        return $this->belongsTo(User::class,'trainer_id')->select('id','username','name','image');
     }
 }

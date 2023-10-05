@@ -21,6 +21,7 @@ class CreateNotificationsTable extends Migration
             $table->integer('reciever_id')->nullable();
             $table->integer('read')->default(0);
             $table->integer('book_id')->nullable();
+            $table->integer('role')->nullable();
             $table->timestamps();
         });
     }

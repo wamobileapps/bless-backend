@@ -27,6 +27,18 @@
   <link rel="stylesheet" href="{{ asset('plugins/summernote/summernote-bs4.min.css') }}">
   <link href="https://gitcdn.github.io/bootstrap-toggle/2.2.2/css/bootstrap-toggle.min.css" rel="stylesheet">
   <script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+    i.fas.fa-walking {
+    margin-right: 12px;
+    
+  }
+button.btn.btn-primary.subme {
+    width: 163px;
+    margin: auto;
+    margin-bottom:8px;
+}
+  </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
@@ -62,11 +74,13 @@
       <div class="user-panel mt-3 pb-3 mb-3 d-flex">
         <div class="image">
           <img src="dist/img/219986.png" class="img-circle elevation-2" alt="User Image">
+          
         </div>
         <div class="info">
           <a href="#" class="d-block">Admin</a>
         </div>
       </div>
+      
 
       <!-- SidebarSearch Form -->
     <!--   <div class="form-inline">
@@ -98,6 +112,23 @@
               <p>Users</p>
             </a>
           </li>
+          <li class="nav-item">
+            <a href="{{ route('quiz.index') }}" class="nav-link {{ @$title['active']=='quiz' ? 'active' : '' }}">
+              <i class="nav-icon far fa-edit nav-icon"></i>
+              <p>Quiz</p>
+            </a>
+          </li>
+          <li class="nav-item">
+          <!-- <a href="{{ route('user.addvideo') }}" class="nav-link"> -->
+          <a href="{{ route('show_video_list') }}" class="nav-link">
+
+          <i class='fas fa-walking'  style='font-size:25px'></i>
+          <!-- <i class="nav-icon fa fa-video-camera "  style="font-size:48px;color:white" aria-hidden="true"></i> -->
+               
+              <p>Digital Exercise</p>
+            </a>
+          </li>
+
          <!--<li class="nav-item">
             <a href="{{ url('dashboard') }}" class="nav-link">
               <i class="nav-icon far fa-circle text-warning"></i>
@@ -181,4 +212,8 @@
 <!-- Model popup -->
 
 </body>
+
+<script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+
 </html>

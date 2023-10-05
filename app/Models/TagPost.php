@@ -16,4 +16,8 @@ class TagPost extends Model
         return $this->belongsTo(NewsFeed::class,'news_feed_id');
     }
 
+    public function user(){
+        return $this->belongsTo(User::class,'trainer_id');
+    }
+
 }

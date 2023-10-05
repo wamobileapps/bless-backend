@@ -19,4 +19,8 @@ class VideoComment extends Model
     {
         return $this->belongsTo(User::Class,'user_id');
     }
+
+    public function  video_comment_like(){
+       return $this->hasMany(VideosCommentLike::class);
+       }
 }

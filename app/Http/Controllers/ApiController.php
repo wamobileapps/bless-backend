@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+
 use JWTAuth;
 use Auth;
 use Hash;
 use Illuminate\Support\Str;
 use App\Models\User;
+use App\Models\LikeNewsFeed;
 use App\Models\Follow;
 use App\Helper\Helper;
 use App\Models\GroupSchedule;
@@ -21,17 +23,20 @@ use DB;
 use Carbon\Carbon;
 use api;
 use App\Models\UserType;
+use App\Models\Subscription;
 use App\Models\UserPrefrence;
 use App\Models\TrainerClient;
 use App\Models\UserProfessionalDetails;
 use Twilio\Rest\Client;
+use function Matrix\diagonal;
+
 class ApiController extends Controller
 {
     public function register(Request $request)
     {
 
-        
-        $data = $request->only('first_name', 'last_name','dob','country','state','city','email', 'password','password_confirmation');
+
+        $data = $request->only('first_name', 'last_name', 'dob', 'country', 'state', 'city', 'email', 'password', 'password_confirmation');
         $validator = Validator::make($request->all(), [
             'name' => 'required|string',
             'email' => 'required|email|unique:users',
@@ -42,83 +47,215 @@ class ApiController extends Controller
             'image' => 'required'
 
         ]);
-        
+
         //Send failed response if request is not valid
         if ($validator->fails()) {
             $message = [
                 'message' => $validator->errors()->first()
             ];
-            return response()->json($message,500);
+            return response()->json($message, 500);
         }
         $originalDate = $request->dob;
         $newDate = date("Y-m-d", strtotime($originalDate));
         //Request is valid, create new user
-        if($request->file())
-            {
-                $fileName = time().'_'.$request->image->getClientOriginalName();
-                $filePath = $request->file('image')->storeAs('User', $fileName, 'public');
-                $image = $fileName;
-           $user = User::create([
+        if ($request->hasFile('image')) {
+            $fileName = time() . '_' . $request->image->getClientOriginalName();
+            $filePath = $request->file('image')->storeAs('User', $fileName, 'public');
+            $image = $fileName;
+        }
+        if ($request->hasFile('cover_image')) {
+            $path = $request->file('cover_image')->store('cover_image');
+        }
+        $date = Carbon::now();
+        $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'username' => $request->username,
             'age' => $request->age,
             'phone_number' => $request->phone_number,
-            'image'=>$image,
-            'country'=>$request->country,
-            'country_code'=>$request->country_code,
-            'state'=>$request->state,
-            'fcm_token'=>$request->fcm_token,
-            'city'=>$request->city,
-            'zip_code'=>$request->zip_code,
+            'image' => @$image,
+            'cover_image' => @$path,
+            'country' => $request->country,
+            'country_code' => $request->country_code,
+            'state' => $request->state,
+            'fcm_token' => $request->fcm_token,
+            'city' => $request->city,
+            'trial_start' => Carbon::now(),
+            'trial_end' => $date->addDays(2),
+            'zip_code' => $request->zip_code,
             'password' => bcrypt($request->password),
-                        
-        ]);
-          return $this->authenticate($request);
-    }
-    }
-    public function edit_profle($id){
 
-        $user=User::find($id);
+        ]);
+        return $this->authenticate($request);
+    }
+
+    public function questionall()
+    {
+
+        $curl = curl_init();
+        $your_api_key = "SG6yM2tsBixyjW7h5lWxydYPSnN2aihk";
+        $your_api_secret = 'vIQe4le0wH3F0daaE9jOHkdS9y5ArM0ifvnSj0Qn';
+        $current_unix_timestamp_in_secs =    time();
+        $your_signature = md5($your_api_key . $your_api_secret . $current_unix_timestamp_in_secs);
+
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => "https://api.classmarker.com/v1/questions.json?api_key=$your_api_key&signature=$your_signature&timestamp=$current_unix_timestamp_in_secs",
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 0,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => 'GET',
+            CURLOPT_HTTPHEADER => array(
+                'Cookie: PHPSESSID=d63747a09b8f8fa18264633f49f0d31e'
+            ),
+        ));
+
+        $response = curl_exec($curl);
+
+        curl_close($curl);
+        return $response;
+    }
+
+    public function postQuestion()
+    {
+        $question_json = '{
+ "question_type": "multiplechoice",
+            "category_id": 0,
+            "question": "Where is Taj mahal ?",
+            "points": "1.00",
+            "correct_feedback": "",
+            "incorrect_feedback": "",
+            "last_updated_timestamp": 1675852988,
+            "status": "active",
+            "options": {
+                "A": {
+                    "content": "Agra"
+                },
+                "B": {
+                    "content": "Mumbai"
+                },
+                "C": {
+                    "content": "Delhi"
+                },
+                "D": {
+                    "content": "Pune"
+                }
+            },
+            "correct_options": [
+                "A"
+            ],
+            "random_answers": false
+}';
+        $curl = curl_init();
+        $your_api_key = "SG6yM2tsBixyjW7h5lWxydYPSnN2aihk";
+        $your_api_secret = 'vIQe4le0wH3F0daaE9jOHkdS9y5ArM0ifvnSj0Qn';
+        $current_unix_timestamp_in_secs =    time();
+        $your_signature = md5($your_api_key . $your_api_secret . $current_unix_timestamp_in_secs);
+
+
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => "https://api.classmarker.com/v1/questions.json?api_key=$your_api_key&signature=$your_signature&timestamp=$current_unix_timestamp_in_secs",
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 0,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => 'POST',
+            CURLOPT_POSTFIELDS => '{
+          
+  "question": "Where is Agra ?",
+  "question_type": "multiplechoice",
+  "category_id": "0",
+  "random_answers": false,
+  "points": 1.00,
+  "correct_feedback": "",
+  "incorrect_feedback": "",
+  "options": {
+    "A": {
+      "content": "Agra"
+    },
+    "B": {
+      "content": "Mumbai"
+    },
+    "C": {
+      "content": "Delhi"
+    },
+    "D": {
+      "content": "Pune"
+  }
+  },
+  "correct_options": ["A"]
+}',
+            CURLOPT_HTTPHEADER => array(
+                'Content-Type: application/json',
+                'Cookie: PHPSESSID=38bde5d0094f1b8e599e011352e6c4b7'
+            ),
+        ));
+
+        $response = curl_exec($curl);
+
+        curl_close($curl);
+        return $response;
+    }
+    public function edit_profle($id)
+    {
+
+        $user = User::find($id);
         return response()->json([
             'success' => true,
             'data' => $user
         ], Response::HTTP_OK);
     }
-    
-    public function update_profile(Request $request,$id){
+
+    public function update_profile(Request $request, $id)
+    {
         $validator = Validator::make($request->all(), [
-            'email' => 'unique:users,email,'.Auth::user()->id,
-            'email' => 'unique:users,username,'.Auth::user()->id
+            'email' => 'unique:users,email,' . Auth::user()->id,
         ]);
         if ($validator->fails()) {
             $message = [
                 'message' => $validator->errors()->first()
             ];
-            return response()->json($message,500);
+            return response()->json($message, 500);
         }
-        $data=$request->all();
+        $data = $request->except(['image', 'cover_image', 'certificate_image', 'description', 'license_id', 'certificate_number']);
+        $professionaldata = $request->only(['description', 'license_id', 'certificate_number']);
+        if ($request->file('image')) {
+            $destination = 'uploads/storage/uploads' . $request->image;
+            $fileName = time() . '_' . $request->image->getClientOriginalName();
+            $filePath = $request->file('image')->storeAs('User', $fileName, 'public');
+            $data['image'] = $fileName;
+        }
+        if ($request->file('cover_image')) {
 
-       if($request->file()) {
-        $destination = 'uploads/storage/uploads'.$request->image;
-        $fileName = time().'_'.$request->image->getClientOriginalName();
-           $filePath = $request->file('image')->storeAs('User', $fileName, 'public');
-        $data['image'] = $fileName;
-       
-    }
-    $image =User::where('id',$id)->update($data);
-    return response()->json([
-        'success' => true,
-        'message' => 'Update Successfully'
-    ], Response::HTTP_OK);
+            $data['cover_image'] = $request->file('cover_image')->store('cover_image');
+        }
+
+        User::where('id', Auth::user()->id)->update($data);
+        if ($request->file('certificate_image')) {
+
+            $cerificateimage = $request->file('certificate_image')->store('certificate_image');
+            UserProfessionalDetails::where('user_id', $id)->update($professionaldata + ['description' => $request->description, 'certificate_image' => $cerificateimage]);
+        } else {
+            UserProfessionalDetails::where('user_id', $id)->update($professionaldata);
+        }
+
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Update Successfully'
+        ], Response::HTTP_OK);
     }
     public function AddBankDetails(Request $request)
     {
-    //   return $request->all();
+        //   return $request->all();
         $validator = Validator::make($request->all(), [
             'name' => 'required|string',
-            'account_number'=>'required|numeric',
-            'ifsc_code'=>'required',
+            'account_number' => 'required|numeric',
+            'ifsc_code' => 'required',
         ]);
 
         //Send failed response if request is not valid
@@ -126,27 +263,27 @@ class ApiController extends Controller
             $message = [
                 'message' => $validator->errors()->first()
             ];
-            return response()->json($message,500);
-            
+            return response()->json($message, 500);
         }
-            BankDetails::create([
-              'user_id'=>Auth::user()->id,
-              'name'=>$request->name,
-              'account_number'=>$request->account_number,
-              'ifsc_code'=>$request->ifsc_code,
-            ]);
+        BankDetails::create([
+            'user_id' => Auth::user()->id,
+            'name' => $request->name,
+            'account_number' => $request->account_number,
+            'ifsc_code' => $request->ifsc_code,
+        ]);
 
-            return response()->json(['status'=>True,
-            "message" => 'Added Successfully ']);
-        
+        return response()->json([
+            'status' => True,
+            "message" => 'Added Successfully '
+        ]);
     }
     public function GetBankDetails()
     {
-      $bankDetails =Auth::user()->bankDetails;
+        $bankDetails = Auth::user()->bankDetails;
 
         return response()->json([
             'success' => true,
-            'Bank Details'=>$bankDetails,
+            'Bank Details' => $bankDetails,
         ], Response::HTTP_OK);
     }
 
@@ -154,7 +291,7 @@ class ApiController extends Controller
     {
         $user['userData'] = DB::table('users')
             ->select('*')
-//            ->leftJoin('book_appointments','users.id','=','book_appointments.trainer_id')
+            //            ->leftJoin('book_appointments','users.id','=','book_appointments.trainer_id')
             ->where(['users.id' => $id, "users.role" => 1])
             ->get();
 
@@ -163,39 +300,40 @@ class ApiController extends Controller
             ->where(['book_appointments.trainer_id' => $id])
             ->get();
 
-//        foreach (json_decode($user) as $value){
-//
-//        }
+        //        foreach (json_decode($user) as $value){
+        //
+        //        }
 
 
 
         $user['appointments'] = $appointments;
         return response()->json([
-            'status'=> True,
-            'userList'=> $user,
+            'status' => True,
+            'userList' => $user,
         ]);
     }
-    
-public function UpdateBankDetails(Request $request)
-{
-   
-    // return Auth::user()->id;
-   
-   
-    BankDetails::where('user_id',Auth::user()->id)->update([
-       
-    'name'=>$request->name,
-    'account_number'=>$request->account_number,
-    'ifsc_code'=>$request->ifsc_code,
 
-]);
-            return response()->json([
-                'status'=>True,
-                "message" => 'Updated Successfully '
-            ]);
-}
+    public function UpdateBankDetails(Request $request)
+    {
 
-        public function deactivate_account(Request $request){
+        // return Auth::user()->id;
+
+
+        BankDetails::where('user_id', Auth::user()->id)->update([
+
+            'name' => $request->name,
+            'account_number' => $request->account_number,
+            'ifsc_code' => $request->ifsc_code,
+
+        ]);
+        return response()->json([
+            'status' => True,
+            "message" => 'Updated Successfully '
+        ]);
+    }
+
+    public function deactivate_account(Request $request)
+    {
         $validator = Validator::make($request->all(), [
             'password' => ['required', 'confirmed'],
         ]);
@@ -205,29 +343,28 @@ public function UpdateBankDetails(Request $request)
             $message = [
                 'message' => $validator->errors()->first()
             ];
-            return response()->json($message,500);
+            return response()->json($message, 500);
         }
         if (Hash::check($request->password, Auth::user()->password)) {
-            User::whereId(Auth::user()->id)->update(['is_active'=>1]);
+            User::whereId(Auth::user()->id)->update(['is_active' => 1]);
             return response()->json([
-                'status'=>True,
+                'status' => True,
                 "message" => 'Deactivate Successfully '
             ]);
-        }
-        else{
+        } else {
             return response()->json([
-                'status'=>False,
+                'status' => False,
                 "message" => 'Password Mismatch'
             ]);
         }
     }
-     public function ResetPassword(Request $request)
-     {
-      
+    public function ResetPassword(Request $request)
+    {
+
         $validator = Validator::make($request->all(), [
             'password' => ['required'],
             'email' => ['required'],
-            
+
         ]);
 
         //Send failed response if request is not valid
@@ -235,31 +372,29 @@ public function UpdateBankDetails(Request $request)
             $message = [
                 'message' => $validator->errors()->first()
             ];
-            return response()->json($message,500);
+            return response()->json($message, 500);
         }
-       
-             $user=User::where('email',$request->email)->first();
-             
-             if (isset($user)) {
-             $user-> update(['password'=>bcrypt($request->password)]);
-            
-             return response()->json([
-                'status'=>True,
+
+        $user = User::where('email', $request->email)->first();
+
+        if (isset($user)) {
+            $user->update(['password' => bcrypt($request->password)]);
+
+            return response()->json([
+                'status' => True,
                 "message" => 'Updated Successfully'
             ]);
-        }
-        else{
+        } else {
             return response()->json([
-                'status'=>True,
+                'status' => True,
                 "message" => 'Invalid Email '
             ]);
-
         }
+    }
 
-     }
+    public function change_password(Request $request)
+    {
 
-    public function change_password(Request $request){
-        
         $validator = Validator::make($request->all(), [
             'currentpassword' => ['required'],
             'password' => 'required|string|min:6',
@@ -271,27 +406,25 @@ public function UpdateBankDetails(Request $request)
             $message = [
                 'message' => $validator->errors()->first()
             ];
-            return response()->json($message,500);
+            return response()->json($message, 500);
         }
         if (Hash::check($request->currentpassword, Auth::user()->password)) {
-            User::whereId(Auth::user()->id)->update(['password'=>bcrypt($request->password)]);
+            User::whereId(Auth::user()->id)->update(['password' => bcrypt($request->password)]);
             return response()->json([
-                'status'=>True,
+                'status' => True,
                 "message" => 'Updated Successfully'
             ]);
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'Current Password Does Not Match',
+            ], 500);
         }
-            else{
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Current Password Does Not Match',
-                ], 500);
-            }
-
     }
-    
+
     public function authenticate(Request $request)
     {
-
+   
         $credentials = $request->only('email', 'password');
 
         //valid credential
@@ -308,7 +441,7 @@ public function UpdateBankDetails(Request $request)
         //Request is validated
         //Crean token
         try {
-            if (! $token = JWTAuth::attempt($credentials)) {
+            if (!$token = JWTAuth::attempt($credentials)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Login credentials are invalid.',
@@ -317,24 +450,22 @@ public function UpdateBankDetails(Request $request)
             }
         } catch (JWTException $e) {
             return $credentials;
-     
         }
 
-        if(Auth::user()->role == 0){
+        if (Auth::user()->role == 0) {
 
-$appdetails =array();
-        $appdetails['trainer'] = $this->trainerSpecialities();
-        $appdetails['client'] = $this->clientSpecialities();
+            $appdetails = array();
+            $appdetails['trainer'] = $this->trainerSpecialities();
+            $appdetails['client'] = $this->clientSpecialities();
         }
-       $followcount = Follow::where('user_id',Auth::user()->id)->count();
-               User::where('id',Auth::user()->id)->update(['fcm_token'=>$request->fcm_token]);
+
+        User::where('id', Auth::user()->id)->update(['fcm_token' => $request->fcm_token]);
         //Token created, return with success response and jwt token
         return response()->json([
             'success' => true,
             'token' => $token,
             'appDetails' => @$appdetails,
-            'followcount' => @$followcount,
-            'user_details'=>$this->getuserdata()
+            'user_details' => $this->getuserdata()
         ]);
     }
 
@@ -366,45 +497,45 @@ $appdetails =array();
         }
     }
 
-//        public function forgot(Request $request)
-//        {
-//
-//
-//            $date = Carbon::now();
-//            $date=strtotime($date);
-//            $futureDate = $date+(60*5);
-//            $expiry=date("Y-m-d H:i:s", $futureDate);
-//            $credentials = request()->validate(['email' => 'required|email']);
-//            $user = User::where('email', $request->email)->first();
-//
-//           //  if (isset($user)) {
-//           // $user = Password::sendResetLink(
-//           //       $request->only('email')
-//           //      );
-//
-//           if (isset($user)) {
-//             $verification_code = Str::random(8);
-//
-//             $user->verification_code=$verification_code;
-//             $user->code_expiry=$expiry;
-//             $user->save();
-//                //Password::sendResetLink($credentials);
-//                //\Mail::to($request->email)->send(new sendResetLink($credentials));
-//             \Mail::to($user->email)->send(new \App\Mail\VerificationCode($user));
-//                  return response()->json([
-//                'status'=>true,
-//                "message" => 'Please check mail for verification code'
-//            ]);
-//
-//        }
-//
-//             else{
-//                 return response()->json([
-//                     'status'=>false,
-//                     "message" => 'Email Id is not Exist '
-//                 ]);
-//             }
-//         }
+    //        public function forgot(Request $request)
+    //        {
+    //
+    //
+    //            $date = Carbon::now();
+    //            $date=strtotime($date);
+    //            $futureDate = $date+(60*5);
+    //            $expiry=date("Y-m-d H:i:s", $futureDate);
+    //            $credentials = request()->validate(['email' => 'required|email']);
+    //            $user = User::where('email', $request->email)->first();
+    //
+    //           //  if (isset($user)) {
+    //           // $user = Password::sendResetLink(
+    //           //       $request->only('email')
+    //           //      );
+    //
+    //           if (isset($user)) {
+    //             $verification_code = Str::random(8);
+    //
+    //             $user->verification_code=$verification_code;
+    //             $user->code_expiry=$expiry;
+    //             $user->save();
+    //                //Password::sendResetLink($credentials);
+    //                //\Mail::to($request->email)->send(new sendResetLink($credentials));
+    //             \Mail::to($user->email)->send(new \App\Mail\VerificationCode($user));
+    //                  return response()->json([
+    //                'status'=>true,
+    //                "message" => 'Please check mail for verification code'
+    //            ]);
+    //
+    //        }
+    //
+    //             else{
+    //                 return response()->json([
+    //                     'status'=>false,
+    //                     "message" => 'Email Id is not Exist '
+    //                 ]);
+    //             }
+    //         }
     public function forgot(Request $request)
     {
 
@@ -418,161 +549,168 @@ $appdetails =array();
                     'status' => true,
                     'message' => __($status)
                 ];
-            }
-            else{
+            } else {
                 return [
                     'status' => false,
                     'message' => 'Server issue try after some time ',
                 ];
             }
             return response()->json([
-                'status'=>true,
+                'status' => true,
                 "message" => 'Reset password link sent on your email address.'
             ]);
-        }
-        else{
+        } else {
             return response()->json([
-                'status'=>false,
+                'status' => false,
                 "message" => 'Email Id is not Exist '
             ]);
         }
     }
 
-         public function verifyCode(Request $request)
-         {
-             
-            $validator = Validator::make($request->all(), [
-                'email' => 'required|email',
-                'code' => 'required'
-            ]);
-    
-            //Send failed response if request is not valid
-            if ($validator->fails()) {
-                return response()->json(['error' => $validator->messages()], 200);
-            }
-             
-             $user=User::where('email',$request->email)->first();
-            
-             $credentials = request()->validate(['email' => 'required|email']);
-             $date = Carbon::now();
-             $date=strtotime($date);
-             $now=date("Y-m-d H:i:s", $date);
-            
-             if($user->code_expiry<$now)
-             {
-                return response()->json([
-                    'status'=>true,
-                    "message" => 'Verification Code Expired'
-                ]);
+    public function verifyCode(Request $request)
+    {
 
-             }
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'code' => 'required'
+        ]);
 
-else{
-           if($request->code==$user->verification_code)
-           {
-            // Password::sendResetLink($credentials);
-
-
-            
-                 return response()->json([
-                      'status'=>true,
-                      "message" => 'Success.'
-                  ]);
-           }
-else{
-    return response()->json([
-                'status'=>false,
-                "message" => 'Please enter correct verification code'
-
-    ]);
-}
-         }
+        //Send failed response if request is not valid
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->messages()], 200);
         }
 
-        public function VerifyReferedCode(Request $request)
-        {
-            $request->all();
-            $exists=User::where('referal_code',$request->referal_code)->first();
-            if($exists){
-                $user=Auth::user();
-              $user->refered_code=$request->referal_code;
-              $user->save();
+        $user = User::where('email', $request->email)->first();
+
+        $credentials = request()->validate(['email' => 'required|email']);
+        $date = Carbon::now();
+        $date = strtotime($date);
+        $now = date("Y-m-d H:i:s", $date);
+
+        if ($user->code_expiry < $now) {
+            return response()->json([
+                'status' => true,
+                "message" => 'Verification Code Expired'
+            ]);
+        } else {
+            if ($request->code == $user->verification_code) {
+                // Password::sendResetLink($credentials);
+
+
 
                 return response()->json([
-                    'status'=>true,
-                    "message" => 'success'
-    
-        ]);
+                    'status' => true,
+                    "message" => 'Success.'
+                ]);
+            } else {
+                return response()->json([
+                    'status' => false,
+                    "message" => 'Please enter correct verification code'
+
+                ]);
+            }
+        }
     }
-        else{
+
+    public function VerifyReferedCode(Request $request)
+    {
+        $request->all();
+        $exists = User::where('referal_code', $request->referal_code)->first();
+        if ($exists) {
+            $user = Auth::user();
+            $user->refered_code = $request->referal_code;
+            $user->save();
+
             return response()->json([
-                'status'=>false,
+                'status' => true,
+                "message" => 'success'
+
+            ]);
+        } else {
+            return response()->json([
+                'status' => false,
                 "message" => "Referal code doesn't exists"
 
-    ]);
-
+            ]);
         }
+    }
 
+    public function InvitedContacts()
+    {
+        return User::where('refered_code', Auth::user()->referal_code)->where('id', '!=', Auth::user()->id)->get();
+    }
+
+    public function getuserdata()
+    {
+        $user = Auth::user();
+
+        $c = DB::table('tbl_countries')->select('name')->where('id', $user->country)->first();
+        $s = DB::table('states')->select('name')->where('id', $user->state)->first();
+        $ci = DB::table('cities')->select('name')->where('id', $user->city)->first();
+        $user->countryid = $user->country;
+        $user->country = @$c->name;
+        $user->stateid = $user->state;
+        $user->state = @$s->name;
+        $user->cityid = $user->city;
+        $user->city = @$ci->name;
+        if (Auth::user()->role == 1) {
+            $user = UserProfessionalDetails::where('user_id', Auth::user()->id)->first();
         }
-
-        public function InvitedContacts()
-        {
-            return User::where('refered_code',Auth::user()->referal_code)->where('id','!=',Auth::user()->id)->get();
-        }
-
-        public function getuserdata(){
-            $user = Auth::user();
-
-            $c =DB::table('tbl_countries')->select('name')->where('id',$user->country)->first();
-            $s =DB::table('states')->select('name')->where('id',$user->state)->first();
-            $ci =DB::table('cities')->select('name')->where('id',$user->city)->first();
-            $user->countryid = $user->country;
-            $user->country =@$c->name;
-            $user->stateid = $user->state;
-            $user->state =@$s->name;
-            $user->cityid =$user->city;
-            $user->city =@$ci->name;
-if(Auth::user()->role == 1){
-    $user =UserProfessionalDetails::where('user_id',Auth::user()->id)->first();
-            }
-            $user->typespecility = UserPrefrence::select('id','type_specialties_id')->where('user_id',Auth::user()->id)
-                ->with(['typespecialtis'=> function($query){$query->select('id','title');}])->get();
-           return $user;
-        }
+        $user->typespecility = UserPrefrence::select('id', 'type_specialties_id')->where('user_id', Auth::user()->id)
+            ->with(['typespecialtis' => function ($query) {
+                $query->select('id', 'title');
+            }])->get();
+        return $user;
+    }
 
     public function get_user(Request $request)
     {
-        //$user =User::get();
-      $user = JWTAuth::authenticate($request->bearerToken());
 
-            $c =DB::table('tbl_countries')->select('name')->where('id',$user->country)->first();
-            $s =DB::table('states')->select('name')->where('id',$user->state)->first();
-            $ci =DB::table('cities')->select('name')->where('id',$user->city)->first();
-        $user->countryid = $user->country;
-        $user->country =@$c->name;
-        $user->stateid = $user->state;
-        $user->state =@$s->name;
-        $user->cityid =$user->city;
-        $user->city =@$ci->name;
-        $user->typespecility = UserPrefrence::select('id','type_specialties_id')->where('user_id',Auth::user()->id)
-            ->with(['typespecialtis'=> function($query){$query->select('id','title');}])->get();
-        $appdetails =array();
-        $appdetails['trainer'] = $this->trainerSpecialities();
-        $appdetails['client'] = $this->clientSpecialities();
-        if(Auth::user()->role == 1){
-        $user->trainer_detail =UserProfessionalDetails::where('user_id',Auth::user()->id)->first();
-    }
+
+        //$user =User::get();
+        $user = JWTAuth::authenticate($request->bearerToken());
+        $trialEndDate = Carbon::parse($user->trial_end);
+        if (!$trialEndDate->isFuture()) {
+            $user->trial_end =true;
+        } else {
+            $user->trial_end = false;
+        }
+            $c = DB::table('tbl_countries')->select('name')->where('id', $user->country)->first();
+            $s = DB::table('states')->select('name')->where('id', $user->state)->first();
+            $ci = DB::table('cities')->select('name')->where('id', $user->city)->first();
+            $user->countryid = $user->country;
+            $user->country = @$c->name;
+            $user->stateid = $user->state;
+            $user->state = @$s->name;
+            $user->cityid = $user->city;
+            $user->city = @$ci->name;
+            $user->followingcount = Follow::where('user_id', Auth::user()->id)->count();
+            $user->following = Follow::select('trainer_id')->with('userfollow')->where('user_id', Auth::user()->id)->get();
+            $user->followers = Follow::select('user_id')->with('user')->where('trainer_id', Auth::user()->id)->get();
+            $user->typespecility = UserPrefrence::select('id', 'type_specialties_id')->where('user_id', Auth::user()->id)
+                ->with(['typespecialtis' => function ($query) {
+                    $query->select('id', 'title', 'user_type_id')->with('usertype');
+                }])->get();
+            $appdetails = array();
+            $user->subscriptiondata = Subscription::where('user_id', Auth::user()->id)->get();
+            $appdetails['trainer'] = $this->trainerSpecialities();
+            $appdetails['client'] = $this->clientSpecialities();
+            if (Auth::user()->role == 1) {
+                $user->trainer_detail = UserProfessionalDetails::where('user_id', Auth::user()->id)->first();
+            }
+
+
         return response()->json([
             'user' => $user,
-            'followcount'=> Follow::where('user_id',Auth::user()->id)->count(),
-        'appDetails'=>$appdetails
+            'followcount' => Follow::where('trainer_id', Auth::user()->id)->count(),
+            'appDetails' => $appdetails
         ]);
     }
 
     public function deleteAccount(Request $request)
     {
 
-            $uid = Auth::user()->id;
+        $uid = Auth::user()->id;
         $validator = Validator::make($request->all(), [
             'password' => ['required', 'confirmed'],
         ]);
@@ -582,13 +720,13 @@ if(Auth::user()->role == 1){
             $message = [
                 'message' => $validator->errors()->first()
             ];
-            return response()->json($message,500);
+            return response()->json($message, 500);
         }
         if (Hash::check($request->password, Auth::user()->password)) {
 
-            Message::where('sender_users_id',$uid)->delete();
-            DB::table('invitations')->where('receiver_users_id',$uid)->delete();
-            DB::table('invitations')->where('sender_users_id',$uid)->delete();
+            Message::where('sender_users_id', $uid)->delete();
+            DB::table('invitations')->where('receiver_users_id', $uid)->delete();
+            DB::table('invitations')->where('sender_users_id', $uid)->delete();
             DB::table('schedules_users')->where('users_id', $uid)->delete();
             DB::table('schedules_user_notifications')->where('receiver_users_id', $uid)->delete();
             DB::table('schedules')->where('users_id', $uid)->delete();
@@ -602,206 +740,226 @@ if(Auth::user()->role == 1){
 
                 JWTAuth::invalidate($request->token);
                 return response()->json([
-                    'status'=>True,
+                    'status' => True,
                     "message" => 'Deleted Successfully '
                 ]);
             }
-
-            }
+        }
         return response()->json([
-            'status'=>True,
+            'status' => True,
             "message" => 'Password Mismatch! '
         ]);
+    }
+
+    public function socialloginwith()
+    {
+        $credentials = request(['provider_id', 'password']);
+        $email = request('email');
+        $devices = request(['device_type', 'device_token', 'fcm_token']);
+        if (!$token = JWTAuth::attempt($credentials)) {
+
+            return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        public function socialloginwith()
-        {
-           $credentials = request(['provider_id', 'password']);
-           $email=request('email');
-           $devices = request(['device_type', 'device_token', 'fcm_token']);
-           if (!$token = JWTAuth::attempt($credentials)) {
-    
-                    return response()->json(['error' => 'Unauthorized'], 401);
-             }
-        
-           User::where('email',$email)
-              ->update(['provider_id' => $credentials['provider_id'],'device_type' => $devices['device_type'],'device_token' => $devices['device_token'],'fcm_token' => $devices['fcm_token']]);
-              return response()->json([
-                'token'=>$token,
-                "status" => 200,
-            ]);
+        User::where('email', $email)
+            ->update(['provider_id' => $credentials['provider_id'], 'device_type' => $devices['device_type'], 'device_token' => $devices['device_token'], 'fcm_token' => $devices['fcm_token']]);
+        return response()->json([
+            'token' => $token,
+            "status" => 200,
+        ]);
+    }
+
+    public function socialLogin(Request $request)
+    {
+
+        //return $request;
+        //dd($request->all());
+        if ($user = User::where('provider_id', '=', $request->provider_id)->first()) {
+            $email = $user->email;
+            $name = $user->name;
+            $provider_name = $user->provider_name;
+            $provider_id = $request->provider_id;
+            $device_type = $user->device_type;
+            $device_token = $user->device_token;
+            $fcm_token = $user->fcm_token;
+            $mobile_number = $user->mobile_number;
+        } else {
+
+            $email = $request->email;
+            $name = $request->name;
+            $provider_name = $request->provider_name;
+            $provider_id = $request->provider_id;
+            $device_type = $request->device_type;
+            $mobile_number = $request->mobile_number;
+            $device_token = $request->device_token;
+            $fcm_token = $request->fcm_token;
         }
 
-        public function socialLogin(Request $request){
-   
-            //return $request;
-            //dd($request->all());
-            if($user=User::where('provider_id', '=', $request->provider_id)->first())
-            {
-            $email=$user->email;
-            $name=$user->name;
-            $provider_name=$user->provider_name;
-            $provider_id=$request->provider_id;
-            $device_type=$user->device_type;
-            $device_token=$user->device_token;
-            $fcm_token=$user->fcm_token;
-            $mobile_number=$user->mobile_number;
-    
-        }
-    else{
-    
-          $email=$request->email;
-          $name=$request->name;
-          $provider_name=$request->provider_name;
-          $provider_id=$request->provider_id;
-          $device_type=$request->device_type;
-          $mobile_number=$request->mobile_number;
-          $device_token=$request->device_token;
-          $fcm_token=$request->fcm_token;
-        }
-    
         if (User::where('email', '=', $email)->count() > 0) {
-    
-            $ex = User::where('email',$email)->first();
-    
+
+            $ex = User::where('email', $email)->first();
+
             if ($ex->provider_name == Null) {
-    
+
                 $email = $email;
                 $password = Hash::make($request->password);
-    
-               return $this->socialloginwith($device_type,$device_token,$fcm_token);
-            }
-    
-    
-          elseif (User::where('provider_id', '=', $provider_id)->count() > 0) {
-            
+
+                return $this->socialloginwith($device_type, $device_token, $fcm_token);
+            } elseif (User::where('provider_id', '=', $provider_id)->count() > 0) {
+
                 // $email = $request->email;
                 $password = Hash::make($request->password);
-                return $this->socialloginwith($device_type,$device_token,$fcm_token);
-          }
-    
-         else{
-                     User::where('email', $email)
-            ->update(['provider_id' => $provider_id,'provider_name' => $provider_name]);
-    
+                return $this->socialloginwith($device_type, $device_token, $fcm_token);
+            } else {
+                User::where('email', $email)
+                    ->update(['provider_id' => $provider_id, 'provider_name' => $provider_name]);
+
                 $email = $email;
                 $password = Hash::make($request->password);
-    
-               return $this->socialloginwith($device_type,$device_token,$fcm_token);
+
+                return $this->socialloginwith($device_type, $device_token, $fcm_token);
             }
-              
-            }
-       
-    else{
-    
-       if (User::where('provider_id', '=', $provider_id)->count() > 0) {
-          $email = $email;
+        } else {
+
+            if (User::where('provider_id', '=', $provider_id)->count() > 0) {
+                $email = $email;
                 $password = Hash::make($request->password);
-                return $this->socialloginwith($device_type,$device_token,$fcm_token);
-        }
-        else{
-          $user = User::create([
-          'name' => $request->name,
-          'email' => $request->email,
-          'mobile_number' => $request->mobile_number,
-          'provider_id' => $request->provider_id,
-          'provider_name' => $request->provider_name,
-          'password' => Hash::make($request->password),
-          'device_type' => $request->device_type,
-          'device_token' => $request->device_token,
-           'fcm_token'=>$request->fcm_token,
-          ]);
-          $email = $email;
-          $password = $request->password;
-         
-          return $this->authenticate($request);
-        }
-                
+                return $this->socialloginwith($device_type, $device_token, $fcm_token);
+            } else {
+                $user = User::create([
+                    'name' => $request->name,
+                    'email' => $request->email,
+                    'mobile_number' => $request->mobile_number,
+                    'provider_id' => $request->provider_id,
+                    'provider_name' => $request->provider_name,
+                    'password' => Hash::make($request->password),
+                    'device_type' => $request->device_type,
+                    'device_token' => $request->device_token,
+                    'fcm_token' => $request->fcm_token,
+                ]);
+                $email = $email;
+                $password = $request->password;
+
+                return $this->authenticate($request);
             }
-       
-       }
-       public function radius(Request $request)
-       {
-       $latitude = $request->latitude;
-       $longitude = $request->longitude;
-       $radius = 400;
-       $post          =       DB::table("posts");
+        }
+    }
+    public function radius(Request $request)
+    {
+        $latitude = $request->latitude;
+        $longitude = $request->longitude;
+        $radius = 400;
+        $post          =       DB::table("posts");
 
-       $post          =       $post->select("*", DB::raw("6371 * acos(cos(radians(" . $latitude . "))
+        $post          =       $post->select("*", DB::raw("6371 * acos(cos(radians(" . $latitude . "))
                                 cos(radians(latitude))  cos(radians(longitude) - radians(" . $longitude . "))
-                               + sin(radians(" .$latitude. ")) * sin(radians(latitude))) AS distance"));
-       $post          =       $post->having('distance', '<', 20);
-       $post          =       $post->orderBy('distance', 'asc');
+                               + sin(radians(" . $latitude . ")) * sin(radians(latitude))) AS distance"));
+        $post          =       $post->having('distance', '<', 20);
+        $post          =       $post->orderBy('distance', 'asc');
 
-       $post          =       $post->get();
-       return response()->json([
-           'status'=>True,
-           'post'=>$post,
-           "message" => 'Password Mismatch! '
-       ]);
-       }
+        $post          =       $post->get();
+        return response()->json([
+            'status' => True,
+            'post' => $post,
+            "message" => 'Password Mismatch! '
+        ]);
+    }
 
-       public function user_list(){
-       $user = User::where('id','!=',Auth::user()->id)->get();
-               return response()->json([
-                   'status'=>True,
-                   'userList'=>$user,
-               ]);
-       }
-  
-    public function getipaddress(){
+    public function user_list()
+    {
+        $user = User::where('id', '!=', Auth::user()->id)->get();
+        return response()->json([
+            'status' => True,
+            'userList' => $user,
+        ]);
+    }
+
+    public function getipaddress()
+    {
         $ipaddress = getenv('REMOTE_ADDR');
-        Echo "Your IP Address is " . $ipaddress;
+        echo "Your IP Address is " . $ipaddress;
     }
-    public function trainer(){
-       $user= User::where('role',1)->get();
+    public function trainer()
+    {
+        $user = User::where('role', 1)->get();
         return response()->json([
-            'status'=>True,
-            'userList'=>$user,
+            'status' => True,
+            'userList' => $user,
         ]);
     }
-    public function  trainerSpecialities(){
-       return UserType::with('role')->where('role_id',1)->get();
+    public function  trainerSpecialities()
+    {
+        return UserType::with('role')->where('role_id', 1)->get();
     }
-    public function  clientSpecialities(){
-        return UserType::with('role')->where('role_id',2)->get();
+    public function  clientSpecialities()
+    {
+        return UserType::with('role')->where('role_id', 2)->get();
     }
-    public function trainertoclient(){
-        $user =TrainerClient::where('trainer_id',Auth::user()->id)->get();
+    public function trainertoclient()
+    {
+        $user = TrainerClient::where('trainer_id', Auth::user()->id)->get();
         return response()->json([
-            'status'=>True,
-            'clientList'=>$user,
+            'status' => True,
+            'clientList' => $user,
         ]);
-    }    public function add_client_to_trainer($id){
-        $user =TrainerClient::create(['trainer_id'=>Auth::user()->id,'client_id'=>$id]);
+    }
+    public function add_client_to_trainer($id)
+    {
+        $user = TrainerClient::create(['trainer_id' => Auth::user()->id, 'client_id' => $id]);
         return response()->json([
-            'status'=>True,
-            'clientList'=>$user,
+            'status' => True,
+            'clientList' => $user,
         ]);
     }
     public function getstates($id)
     {
-        $states =DB::table('states')->where('country_id',$id)->get();
+        $states = DB::table('states')->where('country_id', $id)->get();
         return response()->json([
-            'status'=>True,
+            'status' => True,
             "result" => $states
         ]);
     }
     public function getcountry()
     {
 
-        $country =DB::table('tbl_countries')->get();
+        $country = DB::table('tbl_countries')->get();
         return response()->json([
-            'status'=>True,
+            'status' => True,
             "result" => $country
         ]);
     }
     public function getcities($id)
     {
-        $country =DB::table('cities')->where('state_id',$id)->get();
+        $country = DB::table('cities')->where('state_id', $id)->get();
         return response()->json([
-            'status'=>True,
+            'status' => True,
             "result" => $country
+        ]);
+    }
+    public function getuserbyid($id)
+    {
+        $user = User::with('userprefrence.typespecialtis')->with('newsfeed.comment', 'newsfeed.like')->whereId($id)->first();
+        $user->descriptions = UserProfessionalDetails::where('user_id', $id)->first('description');
+        $user->typespecility = UserPrefrence::select('id', 'type_specialties_id')->where('user_id', Auth::user()->id)
+            ->with(['typespecialtis' => function ($query) {
+                $query->select('id', 'title');
+            }])->get();
+        foreach ($user->newsfeed as $feed) {
+            if (LikeNewsFeed::where(['news_feed_id' => $feed->id, 'user_id' => Auth::user()->id])->exists()) {
+                $feed->islike = true;
+            } else {
+                $feed->islike = false;
+            }
+        }
+        if (Follow::where(['user_id' => Auth::user()->id, 'trainer_id' => $id])->exists()) {
+            $user->isfollow = true;
+        } else {
+            $user->isfollow = false;
+        }
+
+        return response()->json([
+            'status' => True,
+            "result" => $user
         ]);
     }
 }

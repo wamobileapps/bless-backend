@@ -18,13 +18,19 @@ class CreateUsersTable extends Migration
             $table->string('name');
             $table->string('email')->unique();
             $table->string('image')->nullable();
+            $table->integer('subscription_status')->nullable();
+            $table->string('cover_image')->nullable();
             $table->longText('fcm_token')->nullable();
             $table->string('username')->unique();
-            $table->integer('age');
+            $table->string('paystatus')->nullable();
+            $table->dateTime('trial_start')->nullable();
+            $table->dateTime('trial_end')->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->boolean('status')->default(true);
             $table->rememberToken();
             $table->timestamps();
+
         });
     }
 

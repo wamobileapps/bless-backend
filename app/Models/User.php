@@ -38,9 +38,12 @@ class User extends Authenticatable implements JWTSubject
         'city',
         'user',
         'zip_code',
+        'trial_end',
+        'trial_start',
         'country_code',
+        'account_id',
         'verify_status'
-        
+
     ];
 
     /**
@@ -92,5 +95,11 @@ class User extends Authenticatable implements JWTSubject
     }
     public function parentnote(){
         return $this->hasMany(ParentNote::class);
+    }
+    public function userprefrence(){
+        return $this->hasMany(UserPrefrence::class)->select('id','user_id','type_specialties_id');;
+    }
+    public function newsfeed(){
+        return $this->hasMany(NewsFeed::class);
     }
 }

@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\Video;
 use App\Models\VideoLike;
 use App\Models\VideoComment;
+use App\Models\VideosCommentLike;
+
 use App\Helper\Helper;
 use Auth;
 use Illuminate\Support\Facades\Validator;
@@ -61,7 +63,27 @@ class VideoCommentController extends Controller
     public function show($id)
     {
         
-        $data =VideoComment::with(['users'=> function($query){ $query->select('id','username','image');}])->where('video_id',$id)->get();
+        $data =VideoComment::with('video_comment_like')->with(['users'=> function($query){ $query->select('id','username','image');}])->where('video_id',$id)->get();
+
+        foreach ($data as $comment){
+            if(count($comment->video_comment_like)>0) {
+                foreach ($comment->video_comment_like as $comentlike) {
+                    if (VideosCommentLike::where(['video_comment_id' => $comentlike->video_comment_id, 'user_id' => Auth::user()->id])->exists()) {
+                        $comment->isLike = true;
+                    } else {
+                        $comment->isLike = false;
+                    }
+                }
+            }else{
+                $comment->isLike = false;
+            }
+            $comment->video_comment_like_count =count($comment->video_comment_like);
+
+
+
+        }
+
+
         return response()->json([
             'success' => true,
             'data' => $data
@@ -101,4 +123,24 @@ class VideoCommentController extends Controller
     {
         //
     }
+
+    public function video_comment_like($id){
+
+        if(VideosCommentLike::where(['user_id'=>Auth::user()->id,'video_comment_id'=>$id])->exists()){
+            VideosCommentLike::where(['user_id'=>Auth::user()->id,'video_comment_id'=>$id])->delete();
+            $message ='Disliked Successfully';
+        }
+        else{
+            VideosCommentLike::create(['user_id'=>Auth::user()->id,'video_comment_id'=>$id]);
+            $message ='Liked Successfully';
+        }
+
+
+        return response()->json([
+            'success' => true,
+            'message' => $message
+        ], Response::HTTP_OK);
+    }
+
+
 }

@@ -139,13 +139,16 @@ class BuildMyWorkoutVideoController extends Controller
 
         $share=array();
         $alreadyexist =array();
+
         if($request->build_my_workout_id) {
+
             foreach ($request->build_my_workout_id as $workout) {
-                if (ShareWorkout::where('build_my_workout_id', $workout)->where('client_id', $request->client_id,"shared_by",Auth::user()->id)->exists()) {
+
+                if (ShareWorkout::where('build_my_workout_id',$workout)->where(['client_id'=>$request->client_id,"shared_by"=>Auth::user()->id])->exists()) {
                     $alreadyexist[] = $workout;
 
                 } else {
-                    $share[] = ShareWorkout::create(['build_my_workout_id' => $workout, 'client_id' => $request->client_id,"shared_by"=>Auth::user()->id]);
+                    $share[] = ShareWorkout::create(['build_my_workout_id' => $workout, 'client_id' => $request->client_id,"shared_by"=>Auth::user()->id,"date"=>$request->date]);
                 }
 
 
@@ -153,7 +156,7 @@ class BuildMyWorkoutVideoController extends Controller
         }
         if($request->video_id) {
             foreach ($request->video_id as $workout) {
-                if (ShareWorkout::where('video_id', $workout)->where('client_id', $request->client_id,"shared_by",Auth::user()->id)->exists()) {
+                if (ShareWorkout::where('video_id', $workout)->where(['client_id'=>$request->client_id,"shared_by"=>Auth::user()->id])->exists()) {
                     $alreadyexist[] = $workout;
 
                 } else {
@@ -271,7 +274,7 @@ class BuildMyWorkoutVideoController extends Controller
         $build = BuildMyWorkoutModel::where('user_id',Auth::user()->id)->get();
        $bu_id ='';
         foreach ($build as $bu) {
-            if ($bu->category_id == $vid->category_id) {
+            if ($bu->title == $request->day) {
                 $bu_id=$bu->id;
 
             }
@@ -281,14 +284,14 @@ class BuildMyWorkoutVideoController extends Controller
             $data['video_id'] = $vid->id;
             $data['user_id'] = Auth::user()->id;
             $data['build_my_workout_id'] = $bu_id;
-            $data['day_id'] = $request->day_id;
+            $data['day_id'] = $request->day;
 
             BuildMyWorkoutVideo::create($data);
         }
             else{
                 $build =BuildMyWorkoutModel::create([
                     'category_id'=>$vid->category_id,
-                    'title'=>$vid->category->category,
+                    'title'=>$request->day,
                     'user_id'=>Auth::user()->id
                 ]);
 
@@ -309,11 +312,28 @@ class BuildMyWorkoutVideoController extends Controller
     }
 
 
-    public function build_my_workout_by_user_id($id){
+    public function build_my_workout_by_user_id($id,$date){
         $video =BuildMyWorkoutVideo::select('video_id','day_id','created_at')->with('video')->where('user_id',$id)->get();
+        $sharevideo =ShareWorkout::where('client_id',$id)->whereDate('date',$date)->get();
+
         return response()->json([
             'success' => true,
-            'message' => $video
+            'message' => $video,
+            'share' => $sharevideo
         ], Response::HTTP_OK);
     }
+
+    public function add_video_in_multiple_folder(Request $request){
+
+            $data = $request->only('build_my_workout_id','description','day_id');
+            foreach ($request->build_my_workout_id as $work_ids){
+                $details =BuildMyWorkoutVideo::create(['build_my_workout_id'=>$work_ids,'user_id'=>Auth::user()->id,'video_id'=>$request->video_id]);
+            }
+            return response()->json([
+                'success' => true,
+                'data' => $details
+            ], Response::HTTP_OK);
+
+    }
+
 }

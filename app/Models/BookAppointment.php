@@ -14,4 +14,7 @@ class BookAppointment extends Model
     public function client(){
         return $this->belongsTo(User::Class,'client_id');
     }
+    public function slout(){
+        return $this->belongsTo(BookingSlout::Class,'slout_id');
+    }
 }

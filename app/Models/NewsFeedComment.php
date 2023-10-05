@@ -12,4 +12,8 @@ class NewsFeedComment extends Model
     public function user(){
         return $this->belongsTo(User::class);
     }
+
+    public function news_feed_comment_like(){
+        return $this->hasMany(NewsFeedCommentLike::class,'news_feed_comment_id');
+    }
 }

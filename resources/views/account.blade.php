@@ -1,0 +1,12 @@
+@extends('layouts.app')
+
+@section('content')
+    <div class='alert alert-success text-center' role='alert'>
+        Successfully connected with your Account!
+    </div>
+    <div class='row'>
+        <div class='col d-flex align-items-center justify-content-center'>
+            <p class='mt-2'><strong>Account ID:</strong> {{ $account['id'] }}</p>
+        </div>
+    </div>
+@endsection

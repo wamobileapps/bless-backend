@@ -132,41 +132,42 @@ class UserTypeSpecialties extends Controller
 
         foreach ($data as $value)
         {
-            $unique[$value->user->id] = $value;
+            $unique[@$value->user->id] = $value;
         }
 
         $data = array_values($unique);
               foreach ($data as $da){
+                  if(isset($da->user)) {
+                      $c = DB::table('tbl_countries')->select('name')->where('id', @$da->user->country)->first();
+                      $s = DB::table('states')->select('name')->where('id', @$da->user->state)->first();
+                      $ci = DB::table('cities')->select('name')->where('id', @$da->user->city)->first();
+                      $da->country = @$c->name;
+                      $da->state = @$s->name;
+                      $da->city = @$ci->name;
+                      $da->zip_code = @$da->user->zip_code;
 
-                  $c =DB::table('tbl_countries')->select('name')->where('id',$da->user->country)->first();
-                  $s =DB::table('states')->select('name')->where('id',$da->user->state)->first();
-                  $ci =DB::table('cities')->select('name')->where('id',$da->user->city)->first();
-                  $da->country =@$c->name;
-                  $da->state =@$s->name;
-                  $da->city =@$ci->name;
-                  $da->zip_code =@$da->user->zip_code;
-                  $da->user->description =UserProfessionalDetails::where('user_id',$da->user->id)->first()->description;
-                  $feeds = NewsFeed::Where('user_id',$da->user->id)->get();
-                  foreach ($feeds as $feed){
-                  
+                      $da->user->description = UserProfessionalDetails::where('user_id', @$da->user->id)->first()->description;
 
-                      if(LikeNewsFeed::where('news_feed_id',$feed->id)->where('user_id',$da->user->id)->exists()){
-                          $feed->islike = true;
+
+                      $feeds = NewsFeed::Where('user_id', @$da->user->id)->get();
+                      foreach ($feeds as $feed) {
+
+
+                          if (LikeNewsFeed::where('news_feed_id', $feed->id)->where('user_id', @$da->user->id)->exists()) {
+                              $feed->islike = true;
+                          } else {
+                              $feed->islike = false;
+                          }
                       }
-                      else{
-                          $feed->islike =false;
+                      $da->post = $feeds;
+                      $da->appointment = BookAppointment::where('client_id', Auth::user()->id)->where('trainer_id', $da->user->id)->get();
+
+                      if (Follow::where('trainer_id', $da->user->id)->where('user_id', $da->user->id)->exists()) {
+                          $da->isFollow = true;
+                      } else {
+                          $da->isFollow = false;
                       }
                   }
-                  $da->post =$feeds;
-                  $da->appointment =BookAppointment::where('client_id',Auth::user()->id)->where('trainer_id',$da->user->id)->get();
-
-                  if(Follow::where('trainer_id',$da->user->id)->where('user_id',$da->user->id)->exists()){
-                  $da->isFollow =true;
-                  }
-                  else{
-                      $da->isFollow =false;
-                  }
-
               }
 
         return response()->json([

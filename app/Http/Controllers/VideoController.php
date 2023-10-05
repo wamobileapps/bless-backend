@@ -53,6 +53,14 @@ class VideoController extends Controller
             } else {
                 $vid->islike = false;
             }
+
+
+          
+            $vid->video =''.$vid->video;
+         
+
+
+
             if( BuildMyWorkoutVideo::where('video_id',$vid->id)->where('user_id',Auth::user()->id)->exists()){
                 $vid ->isBuildMyWorkout = true;
             }

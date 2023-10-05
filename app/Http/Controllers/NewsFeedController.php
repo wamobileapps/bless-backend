@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+
 use Illuminate\Http\Request;
 use App\Models\NewsFeed;
+use App\Models\User;
 use App\Models\TagPost;
 use App\Models\Follow;
 use App\Models\LikeNewsFeed;
+use App\Models\NewsFeedCommentLike;
 use App\Models\NewsFeedComment;
 use Auth;
 use App\Helper\Helper;
@@ -23,14 +26,14 @@ class NewsFeedController extends Controller
     public function index()
     {
 
-        $follow =Follow::where('user_id',Auth::user()->id)->get('trainer_id');
-        $trainer_id =array();
-        foreach ($follow as $trainer){
-            $trainer_id[] =$trainer->trainer_id;
-        }
+//        $follow =Follow::where('user_id',Auth::user()->id)->get('trainer_id');
+//        $trainer_id =array();
+//        foreach ($follow as $trainer){
+//            $trainer_id[] =$trainer->trainer_id;
+//        }
 
-        $feeds =NewsFeed::with(['user'=>function($query){$query->select('id','username','image');}])
-           ->whereIn('user_id',$trainer_id)->get();
+        $feeds =NewsFeed::with(['user.userprefrence.typespecialtis'=>function($query){$query->select('id','title','description');}])
+            ->with(['tag.user'=> function($query){$query->select('id','username','image','role','cover_image');}])->get();
         
         foreach ($feeds as $feed){
             if(LikeNewsFeed::where('news_feed_id',$feed->id)->where('user_id',Auth::user()->id)->exists()){
@@ -42,53 +45,53 @@ class NewsFeedController extends Controller
             $feed->likecount =LikeNewsFeed::where('news_feed_id',$feed->id)->count();
             $feed->commentcount =NewsFeedComment::where('news_feed_id',$feed->id)->count();
         }
+//
+//        $myfeeds =NewsFeed::with(['user'=>function($query){$query->select('id','username','image');}])
+//            ->where('user_id',Auth::user()->id)->get();
+//        foreach ($myfeeds as $feedsss){
+//            if(LikeNewsFeed::where('news_feed_id',$feedsss->id)->where('user_id',Auth::user()->id)->exists()){
+//                $feedsss->islike = true;
+//            }
+//            else{
+//                $feedsss->islike =false;
+//            }
+//            $feedsss->likecount =LikeNewsFeed::where('news_feed_id',$feedsss->id)->count();
+//            $feedsss->commentcount =NewsFeedComment::where('news_feed_id',$feedsss->id)->count();
+//        }
+//
+//
+//        $tagpost=TagPost::with(['neewsfeed.user'=>function($query){$query->select('id','name','email','image');}])->where('trainer_id',Auth::user()->id)->get();
+//        $object = new \stdClass();
+//        foreach ($tagpost as $tagpost){
+//            $object->post[] =$tagpost->neewsfeed;
+//        }
+//        foreach ($object->post as $tag){
+//            if(LikeNewsFeed::where('news_feed_id',$tag->id)->where('user_id',Auth::user()->id)->exists()){
+//                $tag->islike = true;
+//            }
+//            else{
+//                $tag->islike =false;
+//            }
+//            $tag->likecount =LikeNewsFeed::where('news_feed_id',$tag->id)->count();
+//            $tag->istag =true;
+//            $tag->commentcount =NewsFeedComment::where('news_feed_id',$tag->id)->count();
+//        }
 
-        $myfeeds =NewsFeed::with(['user'=>function($query){$query->select('id','username','image');}])
-            ->where('user_id',Auth::user()->id)->get();
-        foreach ($myfeeds as $feedsss){
-            if(LikeNewsFeed::where('news_feed_id',$feedsss->id)->where('user_id',Auth::user()->id)->exists()){
-                $feedsss->islike = true;
-            }
-            else{
-                $feedsss->islike =false;
-            }
-            $feedsss->likecount =LikeNewsFeed::where('news_feed_id',$feedsss->id)->count();
-            $feedsss->commentcount =NewsFeedComment::where('news_feed_id',$feedsss->id)->count();
-        }
 
 
-        $tagpost=TagPost::with(['neewsfeed.user'=>function($query){$query->select('id','name','email','image');}])->where('trainer_id',Auth::user()->id)->get();
-        $object = new \stdClass();
-        foreach ($tagpost as $tagpost){
-            $object->post[] =$tagpost->neewsfeed;
-        }
-        foreach ($object->post as $tag){
-            if(LikeNewsFeed::where('news_feed_id',$tag->id)->where('user_id',Auth::user()->id)->exists()){
-                $tag->islike = true;
-            }
-            else{
-                $tag->islike =false;
-            }
-            $tag->likecount =LikeNewsFeed::where('news_feed_id',$tag->id)->count();
-            $tag->istag =true;
-            $tag->commentcount =NewsFeedComment::where('news_feed_id',$tag->id)->count();
-        }
-
-
-
-        $data= array_merge((json_decode(json_encode($myfeeds), true)),(json_decode(json_encode($feeds), true)),(json_decode(json_encode($object->post), true)));
-       $data= $this->pc_array_shuffle($data);
+//        $data= array_merge((json_decode(json_encode($myfeeds), true)),(json_decode(json_encode($feeds), true)),(json_decode(json_encode($object->post), true)));
+//       $data= $this->pc_array_shuffle($data);
         return response()->json([
             'success' => true,
-            'data' => $data,
+            'data' => $feeds,
         ], Response::HTTP_OK);
     }
-    function pc_array_shuffle($array) {
-        $i = count($array); while(--$i) {
-            $j = mt_rand(0, $i); if ($i != $j) {
-                // swap elements
-                $tmp = $array[$j]; $array[$j] = $array[$i]; $array[$i] = $tmp; }
-        } return $array; }
+//    function pc_array_shuffle($array) {
+//        $i = count($array); while(--$i) {
+//            $j = mt_rand(0, $i); if ($i != $j) {
+//                // swap elements
+//                $tmp = $array[$j]; $array[$j] = $array[$i]; $array[$i] = $tmp; }
+//        } return $array; }
 
     /**
      * Show the form for creating a new resource.
@@ -110,10 +113,20 @@ class NewsFeedController extends Controller
     {
         $path = $request->file('picture')->store('picture');
         $data = $request->only('description');
-        $detail =NewsFeed::create($data+['user_id'=>Auth::user()->id,'picture'=>$path]);
-        if($request->tag){
-         TagPost::create(['user_id'=>Auth::user()->id,'news_feed_id'=>$detail->id,'trainer_id'=>$request->tag]);
-        }
+        $detail = NewsFeed::create($data + ['user_id' => Auth::user()->id, 'picture' => $path]);
+        if ($request->tag) {
+            foreach ($request->tag as $tag) {
+
+                TagPost::create(['user_id' => Auth::user()->id, 'news_feed_id' => $detail->id, 'trainer_id' => $tag]);
+                $title ="Tag Post";
+                $message = Auth::user()->name.' '.'Tag you in a post ';
+                $userfcm= User::find($tag);
+                $fcm_token = $userfcm->fcm_token;
+                Helper::sendPushNotification($title,$message,$fcm_token,);
+
+            }
+        
+    }
         return response()->json([
             'success' => true,
             'data' => $detail
@@ -128,7 +141,7 @@ class NewsFeedController extends Controller
      */
     public function show($id)
     {
-        $feeds = NewsFeed::Where('user_id',$id)->get();
+        $feeds = NewsFeed::Where('user_id',$id) ->with(['tag.user'=> function($query){$query->select('id','username','image','role','cover_image');}])->get();
         foreach ($feeds as $feed){
             $feed->comment =NewsFeedComment::where('news_feed_id',$feed->id)->count();
             $feed->like =LikeNewsFeed::where('news_feed_id',$feed->id)->count();
@@ -166,17 +179,30 @@ class NewsFeedController extends Controller
      */
     public function update(Request $request, $id)
     {
+
         $data = $request->only('description');
+
         if ($request->has('picture')){
             $path = $request->file('picture')->store('picture');
             $data['picture'] =$path;
         }
 
-        NewsFeed::find($id)->update($data+["updated_at"=>Now()]);
-        $note = Note::find($id);
+       $feed = NewsFeed::find($id)->update($data+["updated_at"=>Now()]);
+        if ($request->tag) {
+            TagPost::where('news_feed_id',$id)->delete();
+            foreach ($request->tag as $tag) {
+
+                TagPost::create(['user_id' => Auth::user()->id, 'news_feed_id' => $id, 'trainer_id' => $tag]);
+                $title ="Tag Post";
+                $message = Auth::user()->name.' '.'Tag you in a post ';
+                $userfcm= User::find($tag);
+                $fcm_token = $userfcm->fcm_token;
+                Helper::sendPushNotification($title,$message,$fcm_token,);
+            }
+        }
         return response()->json([
             'success' => true,
-            'data' => $note
+            'data' => "Updated Successfully"
         ], Response::HTTP_OK);
     }
 
@@ -188,7 +214,14 @@ class NewsFeedController extends Controller
      */
     public function destroy($id)
     {
-        //
+        NewsFeed::find($id)->comment()->delete();
+        NewsFeed::find($id)->like()->delete();
+        NewsFeed::find($id)->tag()->delete();
+        NewsFeed::find($id)->delete();
+        return response()->json([
+            'success' => true,
+            'data' => "Deleted Successfully"
+        ], Response::HTTP_OK);
     }
 
     /**
@@ -254,10 +287,82 @@ class NewsFeedController extends Controller
     }
     
     public function getCommentByNewsId($id){
-        $feeds  =NewsFeedComment::where('news_feed_id',$id)->with(['user'=> function($query){$query->select('id','username','image');}])->get();
+        $feeds  =NewsFeedComment::with('news_feed_comment_like')->where('news_feed_id',$id)->with(['user'=> function($query){$query->select('id','username','image');}])->get();
+
+
+               foreach ($feeds as $comment){
+                   if(count($comment->news_feed_comment_like)>0) {
+                       foreach ($comment->news_feed_comment_like as $comentlike) {
+                           if (NewsFeedCommentLike::where(['news_feed_comment_id' => $comentlike->news_feed_comment_id, 'user_id' => Auth::user()->id])->exists()) {
+                               $comment->isLike = true;
+                           } else {
+                               $comment->isLike = false;
+                           }
+                       }
+                   }else{
+                       $comment->isLike = false;
+                   }
+                   $comment->news_feed_comment_like_count =count($comment->news_feed_comment_like);
+
+
+
+       }
+
         return response()->json([
             'success' => true,
             'data' => $feeds
         ], Response::HTTP_OK);
     }
+
+    public function getNewsFeedLikedUser($id){
+        $feeds  =LikeNewsFeed::select('news_feed_id','user_id')->where('news_feed_id',$id)->with(['user'=> function($query){$query->select('id','username','image');}])->get();
+        return response()->json([
+            'success' => true,
+            'data' => $feeds
+        ], Response::HTTP_OK);
+    }
+
+    public function news_feed_comment_like($id){
+
+        if(NewsFeedCommentLike::where(['user_id'=>Auth::user()->id,'news_feed_comment_id'=>$id])->exists()){
+            NewsFeedCommentLike::where(['user_id'=>Auth::user()->id,'news_feed_comment_id'=>$id])->delete();
+        $message ='Disliked Successfully';
+        }
+        else{
+            NewsFeedCommentLike::create(['user_id'=>Auth::user()->id,'news_feed_comment_id'=>$id]);
+            $message ='Liked Successfully';
+        }
+
+
+        return response()->json([
+            'success' => true,
+            'message' => $message
+        ], Response::HTTP_OK);
+    }
+    public function newsfeedByPage($page)
+    {
+
+        $itemperpage=5;
+        $offset =($page-1)*$itemperpage;
+
+        $feeds =NewsFeed::with(['user.userprefrence.typespecialtis'=>function($query){$query->select('id','title','description');}])
+            ->with(['tag.user'=> function($query){$query->select('id','username','image','role','cover_image');}])->offset($offset)->limit($itemperpage)->orderBy('id','DESC')->get();
+
+        foreach ($feeds as $feed){
+            if(LikeNewsFeed::where('news_feed_id',$feed->id)->where('user_id',Auth::user()->id)->exists()){
+                $feed->islike = true;
+            }
+            else{
+                $feed->islike =false;
+            }
+            $feed->likecount =LikeNewsFeed::where('news_feed_id',$feed->id)->count();
+            $feed->commentcount =NewsFeedComment::where('news_feed_id',$feed->id)->count();
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $feeds,
+        ], Response::HTTP_OK);
+    }
+
 }

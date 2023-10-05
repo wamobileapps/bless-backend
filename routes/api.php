@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ApiController;
 use App\Http\Controllers\ProductController;
@@ -22,9 +23,12 @@ use App\Http\Controllers\VideoCommentController;
 use App\Http\Controllers\ParentNoteController;
 use App\Http\Controllers\UserTypeSpecialties;
 use App\Http\Controllers\NewsFeedController;
+use App\Http\Controllers\PackageController;
 use App\Http\Controllers\FollowController;
 use App\Http\Controllers\BookAppointmentController;
 use App\Http\Controllers\StripePaymentController;
+use App\Http\Controllers\StripeConnectController;
+use App\Http\Controllers\QuizController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -38,8 +42,11 @@ use App\Http\Controllers\StripePaymentController;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
 //   Start Authentication
     Route::post('socialLogin',[ApiController::class,'socialLogin']);
+    Route::get('questionall',[ApiController::class,'questionall']);
+    Route::post('postQuestion',[ApiController::class,'postQuestion']);
     Route::get('socialLogin',[ApiController::class,'socialLogin']);
     Route::post('login', [ApiController::class, 'authenticate']);
     Route::post('register', [ApiController::class, 'register']);
@@ -49,12 +56,15 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     Route::get('getcountry', [ApiController::class, 'getcountry']);
     Route::get('getstates/{countryid}', [ApiController::class, 'getstates']);
     Route::get('getcities/{stateid}', [ApiController::class, 'getcities']);
+// Route::get('/redirect/{uid}', [StripeConnectController::class, 'redirect']);
+Route::get('/redirect', [StripeConnectController::class, 'redirect']);
 
 //    End Authentication
 
 Route::group(['middleware' => ['jwt.verify']], function() {
 
 //   Start User Api
+    Route::get('getuserbyid/{id}', [ApiController::class, 'getuserbyid']);
     Route::post('logout', [ApiController::class, 'logout']);
     Route::post('change_password', [ApiController::class, 'change_password']);
     Route::get('profile', [ApiController::class, 'get_user']);
@@ -85,6 +95,7 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     Route::get('videoByCategoryId/{id}', [VideoController::class,'videoByCategoryId']);
     Route::resource('likevideo', LikeVideoController::class);
     Route::resource('videocomment', VideoCommentController::class);
+    Route::get('video_comment_like/{id}', [VideoCommentController::class,'video_comment_like']);
 //    End Video
 
 //     Start UserType
@@ -98,17 +109,22 @@ Route::group(['middleware' => ['jwt.verify']], function() {
 
 //    Start NewsFeed
     Route::resource('newsfeed', NewsFeedController::class);
+    Route::get('newsfeed_by_page/{page}', [NewsFeedController::class,'newsfeedByPage']);
+    Route::post('newsfeedupdate/{id}', [NewsFeedController::class,'update']);
     Route::post('newsfeedcomment', [NewsFeedController::class,'comment']);
     Route::get('newsfeedcomment/{id}', [NewsFeedController::class,'getCommentByNewsId']);
+    Route::get('get_news_feed_liked_user/{id}', [NewsFeedController::class,'getNewsFeedLikedUser']);
     Route::post('newsfeedlike', [NewsFeedController::class,'like']);
     Route::get('getnewsfeedlike/{id}', [NewsFeedController::class,'likecount']);
     Route::get('newsfeedByUserId/{id}', [NewsFeedController::class,'show']);
+    Route::get('news_feed_comment_like/{id}', [NewsFeedController::class,'news_feed_comment_like']);
+
 
 //    End NewsFeed
 
 //    Start BuildMyWorkoutVideo
     Route::get('getVideoByWorkoutId/{id}', [BuildMyWorkoutVideoController::class,'getVideoByWorkoutId']);
-    Route::get('build_my_workout_by_user_id/{id}', [BuildMyWorkoutVideoController::class,'build_my_workout_by_user_id']);
+    Route::get('build_my_workout_by_user_id/{id}/{date}', [BuildMyWorkoutVideoController::class,'build_my_workout_by_user_id']);
     Route::post('buildmyworkoutvideolike', [BuildMyWorkoutVideoController::class,'buildmyworkoutvideolike']);
     Route::post('buildmyworkoutvideocomment', [BuildMyWorkoutVideoController::class,'buildmyworkoutvideocomment']);
     Route::get('getbuildmyworkoutvideocomment/{id}', [BuildMyWorkoutVideoController::class,'getbuildmyworkoutvideocomment']);
@@ -116,6 +132,7 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     Route::post('share_workout', [BuildMyWorkoutVideoController::class,'share_workout']);
     Route::post('add_video_build_my_workout', [BuildMyWorkoutVideoController::class,'add_video_build_my_workout']);
     Route::get('get_share_workout/{id}', [BuildMyWorkoutVideoController::class,'get_share_workout']);
+    Route::post('add_video_in_multiple_folder', [BuildMyWorkoutVideoController::class,'add_video_in_multiple_folder']);
 //        End  BuildMyWorkoutVideo
 
 //   Start Note
@@ -145,12 +162,27 @@ Route::group(['middleware' => ['jwt.verify']], function() {
 
     Route::resource('bookappointment', BookAppointmentController::class);
 
+    Route::get('getAppointmentOfTrainer/{id}',  [BookAppointmentController::class,'getAppointmentOfTrainer']);
+    Route::post('addSlout',  [BookAppointmentController::class,'addSlout']);
+    Route::get('getSlout/{date}/{trainerid}/{type}',  [BookAppointmentController::class,'getSlout']);
+
 
 //    End BookAppointment
-    Route::get('stripe',  [StripePaymentController::class,'stripe']);
-    Route::post('stripe',  [StripePaymentController::class,'stripePost']);
+
+    Route::post('subscribe',  [StripePaymentController::class,'subscribe']);
+    Route::post('payment', [StripePaymentController::class, 'payment']);
+    Route::get('cancel_subscription', [StripePaymentController::class, 'cancel_subscription']);
+    Route::get('stripeconnect',[StripeConnectController::class, 'index']);
+    Route::post('process-payment',[StripeConnectController::class, 'processPayment']);
+
+//    Question Answer Routes
+
+    Route::get('question/{page}', [QuizController::class,'index']);
 
 
+
+//    PackageRoute
+    Route::resource('package',PackageController::class);
 });
 
 

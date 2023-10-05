@@ -9,4 +9,9 @@ class TypeSpecialist extends Model
 {
     use HasFactory;
     protected $guarded =[];
+
+
+    public function usertype(){
+        return $this->belongsTo(UserType::class,'user_type_id');
+    }
 }

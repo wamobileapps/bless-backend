@@ -16,6 +16,7 @@ class CreateShareWorkoutsTable extends Migration
         Schema::create('share_workouts', function (Blueprint $table) {
             $table->id();
             $table->integer('client_id');
+            $table->integer('shared_by');
             $table->integer('build_my_workout_id')->nullable();
             $table->integer('video_id')->nullable();
             $table->timestamps();

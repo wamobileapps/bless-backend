@@ -16,9 +16,15 @@ class IsAdmin
      * @return mixed
      */
     public function handle(Request $request, Closure $next)
-    { 
-        if (auth()->user()->username == 'admin') { 
+    {
+        if(Auth::check()){
+        if (auth()->user()->email == 'dev@yopmail.com') {
         return $next($request);
+        }
+        else{
+            Auth::logout();
+            return redirect('login');
+        }
         }
         else{
             Auth::logout();

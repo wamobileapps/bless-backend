@@ -20,7 +20,7 @@ class NoteController extends Controller
      */
     public function index()
     {
-      $note = User::with('share_note','parentnote')->with(['note'=> function($query){$query->where('parent_id',0);}])->where('id',Auth::user()->id)->get();
+    $note = User::with('share_note','parentnote')->with(['note'=> function($query){$query->where('parent_id',0);}])->where('id',Auth::user()->id)->get();
 
 
       $notes = array();
@@ -28,7 +28,7 @@ class NoteController extends Controller
             foreach ($note as $not){
         foreach ($not->share_note as $sharenote){
             if($sharenote->note_id !='') {
-                $note =Note::where('id',$sharenote->note_id)->where('parent_id',null)->first();
+                $note =Note::where('id',$sharenote->note_id)->where('parent_id',0)->first();
                 if($note) {
                     $note->user =User::whereId($note->user_id)->first()->name;
                     $note->status = true;
@@ -176,7 +176,7 @@ class NoteController extends Controller
         if(!empty($share)){
             $user =User::find($request->client_id);
             $title ="Share Note";
-            $message ="Note Shared By". Auth::user()->name;
+            $message ="Note Shared By".' '. Auth::user()->name;
             $fcm_token = $user->fcm_token;
             Helper::sendPushNotification($title,$message,$fcm_token,);
 

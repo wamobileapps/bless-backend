@@ -19,8 +19,10 @@ class CreateBookAppointmentsTable extends Migration
             $table->integer('client_id');
             $table->integer('type_specailties_id');
             $table->longText('message');
+            $table->longText('time');
             $table->date('date');
-            $table->time('time');
+            $table->time('start_time');
+            $table->time('end_time');
             $table->integer('status')->default(0)->comment('1=> accept 2 => Reject');
             $table->timestamps();
         });

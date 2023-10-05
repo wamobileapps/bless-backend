@@ -6,9 +6,10 @@ use App\Models\User;
 
 class Helper
 {
-    function sendPushNotification($title,$message,$fcm_token,$id=null) {
+    function sendPushNotification($title,$message,$fcm_token,$id=null,$slout=null) {
    $reciver_id =User::where('fcm_token',$fcm_token)->first();
-Notification::create(['title'=>$title,'message'=>$message,'sender_id'=>Auth()->user()->id,'reciever_id'=>@$reciver_id->id,'read'=>0 ,"book_id"=>$id]);
+
+Notification::create(['title'=>$title,'message'=>$message,'sender_id'=>Auth()->user()->id,'reciever_id'=>@$reciver_id->id,'read'=>0 ,"book_id"=>$id,'role'=>Auth()->user()->role,'book_time'=>$slout]);
 
 
 $url = "https://fcm.googleapis.com/fcm/send";

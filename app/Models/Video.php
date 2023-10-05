@@ -9,15 +9,23 @@ class Video extends Model
 {
     use HasFactory;
 
-    protected $guarded =[];
+    protected $guarded = [];
 
-    public function comment(){
+    public function comment()
+    {
         return $this->hasMany(VideoComment::Class);
     }
-    public function category(){
-        return $this->belongsTo(DigitalExerciseLibrary::Class,'category_id');
+    public function category()
+    {
+        return $this->belongsTo(DigitalExerciseLibrary::Class, 'category_id');
     }
-    public function user(){
+
+    public function getCategory()
+    {
+        return $this->hasOne(DigitalExerciseLibrary::Class,'id', 'category_id');
+    }
+    public function user()
+    {
         return $this->belongsTo(User::Class);
     }
 }
